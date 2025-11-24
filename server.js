@@ -13,38 +13,30 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// Email transporter configuration
-// Try multiple configurations for better compatibility with cloud platforms
+// Email transporter configuration - Using SendGrid
+// SendGrid is more reliable on cloud platforms like Render
 const createTransporter = () => {
-    const emailUser = process.env.EMAIL_USER;
-    const emailPass = process.env.EMAIL_PASSWORD;
+    const sendgridApiKey = process.env.SENDGRID_API_KEY;
+    const receivingEmail = process.env.RECEIVING_EMAIL || process.env.EMAIL_USER;
     
-    if (!emailUser || !emailPass) {
-        console.log('⚠️  EMAIL_USER or EMAIL_PASSWORD not set in environment variables');
+    if (!sendgridApiKey) {
+        console.log('⚠️  SENDGRID_API_KEY not set in environment variables');
+        console.log('⚠️  Please add SENDGRID_API_KEY to Render environment variables');
         return null;
     }
 
-    // Try port 465 (SSL) first, fallback to 587 (TLS)
+    // SendGrid SMTP configuration
     return nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465, // SSL port - more reliable for cloud platforms
-        secure: true, // true for 465, false for other ports
+        host: 'smtp.sendgrid.net',
+        port: 587,
+        secure: false, // true for 465, false for other ports
         auth: {
-            user: emailUser,
-            pass: emailPass
+            user: 'apikey', // Literally the word 'apikey' for SendGrid
+            pass: sendgridApiKey // Your SendGrid API key
         },
         connectionTimeout: 20000, // 20 seconds
         greetingTimeout: 20000,
-        socketTimeout: 20000,
-        // TLS options
-        tls: {
-            rejectUnauthorized: false, // Accept self-signed certificates
-            ciphers: 'SSLv3'
-        },
-        // Pool connections for better performance
-        pool: true,
-        maxConnections: 1,
-        maxMessages: 3
+        socketTimeout: 20000
     });
 };
 
@@ -55,17 +47,16 @@ const transporter = createTransporter();
 if (transporter) {
     transporter.verify(function(error, success) {
         if (error) {
-            console.log('⚠️  Email transporter warning:', error.message);
+            console.log('⚠️  SendGrid transporter warning:', error.message);
             console.log('⚠️  Email verification failed, but server will still start.');
-            console.log('⚠️  Please verify EMAIL_USER and EMAIL_PASSWORD in Render environment variables.');
+            console.log('⚠️  Please verify SENDGRID_API_KEY in Render environment variables.');
             console.log('⚠️  Emails will still be attempted when forms are submitted.');
-            console.log('⚠️  Note: Render free tier may have network restrictions affecting Gmail connections.');
         } else {
-            console.log('✅ Email server is ready to send messages');
+            console.log('✅ SendGrid email server is ready to send messages');
         }
     });
 } else {
-    console.log('⚠️  Email transporter not configured - EMAIL_USER or EMAIL_PASSWORD missing');
+    console.log('⚠️  Email transporter not configured - SENDGRID_API_KEY missing');
 }
 
 // API endpoint to send email
