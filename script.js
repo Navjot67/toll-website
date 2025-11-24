@@ -11,14 +11,22 @@ document.addEventListener('DOMContentLoaded', function() {
         // Get form data
         const formData = {
             name: document.getElementById('name').value.trim(),
+            email: document.getElementById('email').value.trim(),
             nyTollAccount: document.getElementById('nyTollAccount').value.trim(),
             plateNumber: document.getElementById('plateNumber').value.trim(),
             njViolationNumber: document.getElementById('njViolationNumber').value.trim()
         };
 
         // Validate required fields
-        if (!formData.name || !formData.nyTollAccount || !formData.plateNumber || !formData.njViolationNumber) {
+        if (!formData.name || !formData.email || !formData.nyTollAccount || !formData.plateNumber || !formData.njViolationNumber) {
             showMessage('Please fill in all required fields.', 'error');
+            return;
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            showMessage('Please enter a valid email address.', 'error');
             return;
         }
 

@@ -36,12 +36,20 @@ transporter.verify(function(error, success) {
 // API endpoint to send email
 app.post('/api/send-email', async (req, res) => {
     try {
-        const { name, nyTollAccount, plateNumber, njViolationNumber } = req.body;
+        const { name, email, nyTollAccount, plateNumber, njViolationNumber } = req.body;
 
         // Validate input
-        if (!name || !nyTollAccount || !plateNumber || !njViolationNumber) {
+        if (!name || !email || !nyTollAccount || !plateNumber || !njViolationNumber) {
             return res.status(400).json({ 
-                error: 'Missing required fields: name, NY toll account, plate number, and NJ violation number are required' 
+                error: 'Missing required fields: name, email, NY toll account, plate number, and NJ violation number are required' 
+            });
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ 
+                error: 'Invalid email address format' 
             });
         }
 
@@ -57,6 +65,7 @@ app.post('/api/send-email', async (req, res) => {
                     </h2>
                     <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-top: 20px;">
                         <p style="margin-bottom: 15px;"><strong>Name:</strong> ${name}</p>
+                        <p style="margin-bottom: 15px;"><strong>Email Address (for toll bill notifications):</strong> <a href="mailto:${email}">${email}</a></p>
                         <p style="margin-bottom: 15px;"><strong>NY Toll Bill Account Number:</strong> ${nyTollAccount}</p>
                         <p style="margin-bottom: 15px;"><strong>Plate Number:</strong> ${plateNumber}</p>
                         <p style="margin-bottom: 15px;"><strong>NJ Toll Violation Number:</strong> ${njViolationNumber}</p>
@@ -71,6 +80,7 @@ app.post('/api/send-email', async (req, res) => {
 New Toll Information Submission
 
 Name: ${name}
+Email Address (for toll bill notifications): ${email}
 NY Toll Bill Account Number: ${nyTollAccount}
 Plate Number: ${plateNumber}
 NJ Toll Violation Number: ${njViolationNumber}
