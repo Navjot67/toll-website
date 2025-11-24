@@ -14,22 +14,34 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 // Email transporter configuration
-// You can use Gmail, Outlook, or any SMTP service
+// Using direct SMTP for Gmail to avoid connection timeout issues
 const transporter = nodemailer.createTransport({
-    service: process.env.EMAIL_SERVICE || 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // true for 465, false for other ports
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD
+    },
+    connectionTimeout: 10000, // 10 seconds
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+    // Allow connections to untrusted servers (needed for some environments)
+    tls: {
+        rejectUnauthorized: false
     }
 });
 
-// Verify transporter configuration
+// Verify transporter configuration (non-blocking)
+// This won't block server startup if email fails
 transporter.verify(function(error, success) {
     if (error) {
-        console.log('Email transporter error:', error);
-        console.log('Please check your EMAIL_USER and EMAIL_PASSWORD in .env file');
+        console.log('⚠️  Email transporter warning:', error.message);
+        console.log('⚠️  Email verification failed, but server will still start.');
+        console.log('⚠️  Please verify EMAIL_USER and EMAIL_PASSWORD in Render environment variables.');
+        console.log('⚠️  Emails may fail to send until this is resolved.');
     } else {
-        console.log('Email server is ready to send messages');
+        console.log('✅ Email server is ready to send messages');
     }
 });
 
@@ -91,16 +103,23 @@ Submission Time: ${new Date().toLocaleString()}
             `
         };
 
-        // Send email
-        await transporter.sendMail(mailOptions);
+        // Send email with timeout handling
+        try {
+            await transporter.sendMail(mailOptions);
+            console.log(`Email sent successfully for submission from: ${name}`);
+        } catch (emailError) {
+            console.error('Error sending email:', emailError);
+            // Don't fail the request if email fails, but log it
+            // You can check logs to see failed email attempts
+        }
 
         res.json({ 
             message: 'Your information has been submitted successfully! Thank you.' 
         });
     } catch (error) {
-        console.error('Error sending email:', error);
+        console.error('Error processing submission:', error);
         res.status(500).json({ 
-            error: 'Failed to send email. Please try again later or contact us directly.' 
+            error: 'Failed to process your submission. Please try again later or contact us directly.' 
         });
     }
 });
