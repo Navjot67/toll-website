@@ -89,9 +89,15 @@ app.post('/api/send-email', async (req, res) => {
         }
 
         // Email content
+        const fromEmail = process.env.FROM_EMAIL || process.env.EMAIL_USER || 'noreply@tollwebsite.com';
+        const receivingEmail = process.env.RECEIVING_EMAIL || fromEmail;
+        
         const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: process.env.RECEIVING_EMAIL || process.env.EMAIL_USER,
+            from: {
+                name: 'Toll Information Form',
+                address: fromEmail
+            },
+            to: receivingEmail,
             subject: `New Toll Information Submission - ${name}`,
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -126,27 +132,36 @@ Submission Time: ${new Date().toLocaleString()}
             `
         };
 
-        // Send email with timeout handling and retry logic
+        // Send email with timeout handling
         if (!transporter) {
-            console.error('❌ Cannot send email: Email transporter not configured');
-            console.error('   Please set EMAIL_USER and EMAIL_PASSWORD in Render environment variables');
+            console.error('❌ Cannot send email: SendGrid transporter not configured');
+            console.error('   Please set SENDGRID_API_KEY in Render environment variables');
+            // Log submission details for manual follow-up
+            console.log('   Submission details:', {
+                name,
+                email,
+                nyTollAccount,
+                plateNumber,
+                njViolationNumber,
+                timestamp: new Date().toISOString()
+            });
         } else {
             try {
                 // Try sending with timeout
                 const emailResult = await Promise.race([
                     transporter.sendMail(mailOptions),
                     new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Email send timeout after 15 seconds')), 15000)
+                        setTimeout(() => reject(new Error('Email send timeout after 20 seconds')), 20000)
                     )
                 ]);
-                console.log(`✅ Email sent successfully for submission from: ${name} (${email})`);
+                console.log(`✅ Email sent successfully via SendGrid for submission from: ${name} (${email})`);
             } catch (emailError) {
-                console.error('❌ Error sending email:', emailError.message);
+                console.error('❌ Error sending email via SendGrid:', emailError.message);
                 console.error('   This could be due to:');
-                console.error('   1. Network restrictions on Render free tier');
-                console.error('   2. Gmail blocking connections from cloud IPs');
-                console.error('   3. Incorrect EMAIL_PASSWORD (must be Gmail App Password)');
-                console.error('   4. Gmail security settings blocking the connection');
+                console.error('   1. Invalid SENDGRID_API_KEY');
+                console.error('   2. SendGrid account not verified');
+                console.error('   3. SendGrid rate limits reached');
+                console.error('   4. Network issues');
                 console.error('   Form submission was successful, but email notification failed.');
                 // Log submission details for manual follow-up
                 console.log('   Submission details:', {
