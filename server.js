@@ -179,9 +179,10 @@ Submission Time: ${new Date().toLocaleString()}
                 console.log('   Submission details:', {
                     name,
                     email,
-                    nyTollAccount,
+                    tollType,
+                    nyTollAccount: tollType === 'NY' || tollType === 'BOTH' ? nyTollAccount : 'N/A',
+                    njViolationNumber: tollType === 'NJ' || tollType === 'BOTH' ? njViolationNumber : 'N/A',
                     plateNumber,
-                    njViolationNumber,
                     timestamp: new Date().toISOString()
                 });
             }
