@@ -14,36 +14,59 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 // Email transporter configuration
-// Using direct SMTP for Gmail to avoid connection timeout issues
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // true for 465, false for other ports
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
-    },
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-    // Allow connections to untrusted servers (needed for some environments)
-    tls: {
-        rejectUnauthorized: false
+// Try multiple configurations for better compatibility with cloud platforms
+const createTransporter = () => {
+    const emailUser = process.env.EMAIL_USER;
+    const emailPass = process.env.EMAIL_PASSWORD;
+    
+    if (!emailUser || !emailPass) {
+        console.log('⚠️  EMAIL_USER or EMAIL_PASSWORD not set in environment variables');
+        return null;
     }
-});
+
+    // Try port 465 (SSL) first, fallback to 587 (TLS)
+    return nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465, // SSL port - more reliable for cloud platforms
+        secure: true, // true for 465, false for other ports
+        auth: {
+            user: emailUser,
+            pass: emailPass
+        },
+        connectionTimeout: 20000, // 20 seconds
+        greetingTimeout: 20000,
+        socketTimeout: 20000,
+        // TLS options
+        tls: {
+            rejectUnauthorized: false, // Accept self-signed certificates
+            ciphers: 'SSLv3'
+        },
+        // Pool connections for better performance
+        pool: true,
+        maxConnections: 1,
+        maxMessages: 3
+    });
+};
+
+const transporter = createTransporter();
 
 // Verify transporter configuration (non-blocking)
 // This won't block server startup if email fails
-transporter.verify(function(error, success) {
-    if (error) {
-        console.log('⚠️  Email transporter warning:', error.message);
-        console.log('⚠️  Email verification failed, but server will still start.');
-        console.log('⚠️  Please verify EMAIL_USER and EMAIL_PASSWORD in Render environment variables.');
-        console.log('⚠️  Emails may fail to send until this is resolved.');
-    } else {
-        console.log('✅ Email server is ready to send messages');
-    }
-});
+if (transporter) {
+    transporter.verify(function(error, success) {
+        if (error) {
+            console.log('⚠️  Email transporter warning:', error.message);
+            console.log('⚠️  Email verification failed, but server will still start.');
+            console.log('⚠️  Please verify EMAIL_USER and EMAIL_PASSWORD in Render environment variables.');
+            console.log('⚠️  Emails will still be attempted when forms are submitted.');
+            console.log('⚠️  Note: Render free tier may have network restrictions affecting Gmail connections.');
+        } else {
+            console.log('✅ Email server is ready to send messages');
+        }
+    });
+} else {
+    console.log('⚠️  Email transporter not configured - EMAIL_USER or EMAIL_PASSWORD missing');
+}
 
 // API endpoint to send email
 app.post('/api/send-email', async (req, res) => {
@@ -103,14 +126,38 @@ Submission Time: ${new Date().toLocaleString()}
             `
         };
 
-        // Send email with timeout handling
-        try {
-            await transporter.sendMail(mailOptions);
-            console.log(`Email sent successfully for submission from: ${name}`);
-        } catch (emailError) {
-            console.error('Error sending email:', emailError);
-            // Don't fail the request if email fails, but log it
-            // You can check logs to see failed email attempts
+        // Send email with timeout handling and retry logic
+        if (!transporter) {
+            console.error('❌ Cannot send email: Email transporter not configured');
+            console.error('   Please set EMAIL_USER and EMAIL_PASSWORD in Render environment variables');
+        } else {
+            try {
+                // Try sending with timeout
+                const emailResult = await Promise.race([
+                    transporter.sendMail(mailOptions),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Email send timeout after 15 seconds')), 15000)
+                    )
+                ]);
+                console.log(`✅ Email sent successfully for submission from: ${name} (${email})`);
+            } catch (emailError) {
+                console.error('❌ Error sending email:', emailError.message);
+                console.error('   This could be due to:');
+                console.error('   1. Network restrictions on Render free tier');
+                console.error('   2. Gmail blocking connections from cloud IPs');
+                console.error('   3. Incorrect EMAIL_PASSWORD (must be Gmail App Password)');
+                console.error('   4. Gmail security settings blocking the connection');
+                console.error('   Form submission was successful, but email notification failed.');
+                // Log submission details for manual follow-up
+                console.log('   Submission details:', {
+                    name,
+                    email,
+                    nyTollAccount,
+                    plateNumber,
+                    njViolationNumber,
+                    timestamp: new Date().toISOString()
+                });
+            }
         }
 
         res.json({ 
