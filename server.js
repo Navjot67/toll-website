@@ -4,6 +4,9 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
+// For SendGrid REST API (more reliable than SMTP)
+const sgMail = require('@sendgrid/mail');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -13,55 +16,16 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// Email transporter configuration - Using SendGrid
-// SendGrid is more reliable on cloud platforms like Render
-const createTransporter = () => {
-    const sendgridApiKey = process.env.SENDGRID_API_KEY;
-    const receivingEmail = process.env.RECEIVING_EMAIL || process.env.EMAIL_USER;
-    
-    if (!sendgridApiKey) {
-        console.log('⚠️  SENDGRID_API_KEY not set in environment variables');
-        console.log('⚠️  Please add SENDGRID_API_KEY to Render environment variables');
-        return null;
-    }
+// SendGrid REST API configuration (more reliable than SMTP on cloud platforms)
+const sendgridApiKey = process.env.SENDGRID_API_KEY;
 
-    // SendGrid SMTP configuration
-    // Try port 465 (SSL) which is more reliable on cloud platforms
-    return nodemailer.createTransport({
-        host: 'smtp.sendgrid.net',
-        port: 465, // SSL port - more reliable for cloud platforms
-        secure: true, // true for 465, false for other ports
-        auth: {
-            user: 'apikey', // Literally the word 'apikey' for SendGrid
-            pass: sendgridApiKey // Your SendGrid API key
-        },
-        connectionTimeout: 30000, // 30 seconds
-        greetingTimeout: 30000,
-        socketTimeout: 30000,
-        // TLS options for better compatibility
-        tls: {
-            rejectUnauthorized: false
-        }
-    });
-};
-
-const transporter = createTransporter();
-
-// Verify transporter configuration (non-blocking)
-// This won't block server startup if email fails
-if (transporter) {
-    transporter.verify(function(error, success) {
-        if (error) {
-            console.log('⚠️  SendGrid transporter warning:', error.message);
-            console.log('⚠️  Email verification failed, but server will still start.');
-            console.log('⚠️  Please verify SENDGRID_API_KEY in Render environment variables.');
-            console.log('⚠️  Emails will still be attempted when forms are submitted.');
-        } else {
-            console.log('✅ SendGrid email server is ready to send messages');
-        }
-    });
+if (sendgridApiKey) {
+    sgMail.setApiKey(sendgridApiKey);
+    console.log('✅ SendGrid API configured');
 } else {
-    console.log('⚠️  Email transporter not configured - SENDGRID_API_KEY missing');
+    console.log('⚠️  SENDGRID_API_KEY not set in environment variables');
+    console.log('⚠️  Please add SENDGRID_API_KEY to Render environment variables');
+    console.log('⚠️  Emails will still be attempted when forms are submitted.');
 }
 
 // API endpoint to send email
@@ -128,9 +92,9 @@ Submission Time: ${new Date().toLocaleString()}
             `
         };
 
-        // Send email with timeout handling
-        if (!transporter) {
-            console.error('❌ Cannot send email: SendGrid transporter not configured');
+        // Send email using SendGrid REST API (more reliable than SMTP)
+        if (!sendgridApiKey) {
+            console.error('❌ Cannot send email: SENDGRID_API_KEY not configured');
             console.error('   Please set SENDGRID_API_KEY in Render environment variables');
             // Log submission details for manual follow-up
             console.log('   Submission details:', {
@@ -143,19 +107,54 @@ Submission Time: ${new Date().toLocaleString()}
             });
         } else {
             try {
-                // Try sending with timeout
-                const emailResult = await Promise.race([
-                    transporter.sendMail(mailOptions),
-                    new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Email send timeout after 20 seconds')), 20000)
-                    )
-                ]);
-                console.log(`✅ Email sent successfully via SendGrid for submission from: ${name} (${email})`);
+                // Use SendGrid REST API instead of SMTP
+                const msg = {
+                    to: receivingEmail,
+                    from: fromEmail,
+                    subject: `New Toll Information Submission - ${name}`,
+                    text: `
+New Toll Information Submission
+
+Name: ${name}
+Email Address (for toll bill notifications): ${email}
+NY Toll Bill Account Number: ${nyTollAccount}
+Plate Number: ${plateNumber}
+NJ Toll Violation Number: ${njViolationNumber}
+
+---
+This email was sent from your toll information submission form.
+Submission Time: ${new Date().toLocaleString()}
+                    `,
+                    html: `
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                            <h2 style="color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
+                                New Toll Information Submission
+                            </h2>
+                            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                                <p style="margin-bottom: 15px;"><strong>Name:</strong> ${name}</p>
+                                <p style="margin-bottom: 15px;"><strong>Email Address (for toll bill notifications):</strong> <a href="mailto:${email}">${email}</a></p>
+                                <p style="margin-bottom: 15px;"><strong>NY Toll Bill Account Number:</strong> ${nyTollAccount}</p>
+                                <p style="margin-bottom: 15px;"><strong>Plate Number:</strong> ${plateNumber}</p>
+                                <p style="margin-bottom: 15px;"><strong>NJ Toll Violation Number:</strong> ${njViolationNumber}</p>
+                            </div>
+                            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px;">
+                                <p>This email was sent from your toll information submission form.</p>
+                                <p>Submission Time: ${new Date().toLocaleString()}</p>
+                            </div>
+                        </div>
+                    `
+                };
+
+                await sgMail.send(msg);
+                console.log(`✅ Email sent successfully via SendGrid API for submission from: ${name} (${email})`);
             } catch (emailError) {
-                console.error('❌ Error sending email via SendGrid:', emailError.message);
+                console.error('❌ Error sending email via SendGrid API:', emailError.message);
+                if (emailError.response) {
+                    console.error('   SendGrid error details:', JSON.stringify(emailError.response.body, null, 2));
+                }
                 console.error('   This could be due to:');
                 console.error('   1. Invalid SENDGRID_API_KEY');
-                console.error('   2. SendGrid account not verified');
+                console.error('   2. Sender email not verified in SendGrid');
                 console.error('   3. SendGrid rate limits reached');
                 console.error('   4. Network issues');
                 console.error('   Form submission was successful, but email notification failed.');
