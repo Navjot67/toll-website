@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toll Information Submission</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="form-wrapper">
+            <div class="header">
+                <h1>Submit Your Toll Information</h1>
+                <p>Please provide your information below</p>
+            </div>
+            
+            <form id="contactForm" class="contact-form">
+                <div class="form-group">
+                    <label for="name">Name *</label>
+                    <input type="text" id="name" name="name" required placeholder="Enter your full name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="nyTollAccount" class="label-with-example">
+                        NY Toll Bill Account Number *
+                        <button type="button" class="example-btn" onclick="showExample('nyToll')">📷 View Example</button>
+                    </label>
+                    <input type="text" id="nyTollAccount" name="nyTollAccount" required placeholder="Enter your NY toll bill account number">
+                </div>
+                
+                <div class="form-group">
+                    <label for="plateNumber">Plate Number *</label>
+                    <input type="text" id="plateNumber" name="plateNumber" required placeholder="Enter your plate number">
+                </div>
+                
+                <div class="form-group">
+                    <label for="njViolationNumber" class="label-with-example">
+                        NJ Toll Violation Number *
+                        <button type="button" class="example-btn" onclick="showExample('njViolation')">📷 View Example</button>
+                    </label>
+                    <input type="text" id="njViolationNumber" name="njViolationNumber" required placeholder="Enter your NJ toll violation number">
+                </div>
+                
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    <span class="btn-text">Submit Information</span>
+                    <span class="btn-loader" style="display: none;">Submitting...</span>
+                </button>
+                
+                <div id="messageBox" class="message-box" style="display: none;"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Example Image Modal -->
+    <div id="exampleModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeExample()">&times;</span>
+            <h3 id="modalTitle"></h3>
+            <div class="example-image-container">
+                <img id="exampleImage" src="" alt="Example Image" />
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
+
