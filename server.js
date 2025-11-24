@@ -26,17 +26,22 @@ const createTransporter = () => {
     }
 
     // SendGrid SMTP configuration
+    // Try port 465 (SSL) which is more reliable on cloud platforms
     return nodemailer.createTransport({
         host: 'smtp.sendgrid.net',
-        port: 587,
-        secure: false, // true for 465, false for other ports
+        port: 465, // SSL port - more reliable for cloud platforms
+        secure: true, // true for 465, false for other ports
         auth: {
             user: 'apikey', // Literally the word 'apikey' for SendGrid
             pass: sendgridApiKey // Your SendGrid API key
         },
-        connectionTimeout: 20000, // 20 seconds
-        greetingTimeout: 20000,
-        socketTimeout: 20000
+        connectionTimeout: 30000, // 30 seconds
+        greetingTimeout: 30000,
+        socketTimeout: 30000,
+        // TLS options for better compatibility
+        tls: {
+            rejectUnauthorized: false
+        }
     });
 };
 
