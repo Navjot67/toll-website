@@ -31,12 +31,12 @@ if (sendgridApiKey) {
 // API endpoint to send email
 app.post('/api/send-email', async (req, res) => {
     try {
-        const { name, email, nyTollAccount, plateNumber, njViolationNumber } = req.body;
+        const { name, email, tollType, nyTollAccount, plateNumber, njViolationNumber } = req.body;
 
-        // Validate input
-        if (!name || !email || !nyTollAccount || !plateNumber || !njViolationNumber) {
+        // Validate input - basic fields
+        if (!name || !email || !tollType) {
             return res.status(400).json({ 
-                error: 'Missing required fields: name, email, NY toll account, plate number, and NJ violation number are required' 
+                error: 'Missing required fields: name, email, and toll type are required' 
             });
         }
 
@@ -45,6 +45,23 @@ app.post('/api/send-email', async (req, res) => {
         if (!emailRegex.test(email)) {
             return res.status(400).json({ 
                 error: 'Invalid email address format' 
+            });
+        }
+
+        // Validate fields based on toll type
+        if (tollType === 'NY' && (!nyTollAccount || !plateNumber)) {
+            return res.status(400).json({ 
+                error: 'Missing required fields for NY: NY Toll Account Number and Plate Number are required' 
+            });
+        }
+        if (tollType === 'NJ' && (!njViolationNumber || !plateNumber)) {
+            return res.status(400).json({ 
+                error: 'Missing required fields for NJ: NJ Violation Number and Plate Number are required' 
+            });
+        }
+        if (tollType === 'BOTH' && (!nyTollAccount || !njViolationNumber || !plateNumber)) {
+            return res.status(400).json({ 
+                error: 'Missing required fields for BOTH: NY Toll Account Number, NJ Violation Number, and Plate Number are required' 
             });
         }
 
@@ -117,9 +134,8 @@ New Toll Information Submission
 
 Name: ${name}
 Email Address (for toll bill notifications): ${email}
-NY Toll Bill Account Number: ${nyTollAccount}
-Plate Number: ${plateNumber}
-NJ Toll Violation Number: ${njViolationNumber}
+Toll Type Selected: ${tollType === 'NY' ? 'New York Only' : tollType === 'NJ' ? 'New Jersey Only' : 'Both NY and NJ'}
+${tollType === 'NY' || tollType === 'BOTH' ? `NY Toll Bill Account Number: ${nyTollAccount}\n` : ''}${tollType === 'NJ' || tollType === 'BOTH' ? `NJ Toll Violation Number: ${njViolationNumber}\n` : ''}Plate Number: ${plateNumber}
 
 ---
 This email was sent from your toll information submission form.
@@ -133,9 +149,10 @@ Submission Time: ${new Date().toLocaleString()}
                             <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-top: 20px;">
                                 <p style="margin-bottom: 15px;"><strong>Name:</strong> ${name}</p>
                                 <p style="margin-bottom: 15px;"><strong>Email Address (for toll bill notifications):</strong> <a href="mailto:${email}">${email}</a></p>
-                                <p style="margin-bottom: 15px;"><strong>NY Toll Bill Account Number:</strong> ${nyTollAccount}</p>
+                                <p style="margin-bottom: 15px;"><strong>Toll Type Selected:</strong> ${tollType === 'NY' ? 'New York Only' : tollType === 'NJ' ? 'New Jersey Only' : 'Both NY and NJ'}</p>
+                                ${tollType === 'NY' || tollType === 'BOTH' ? `<p style="margin-bottom: 15px;"><strong>NY Toll Bill Account Number:</strong> ${nyTollAccount}</p>` : ''}
+                                ${tollType === 'NJ' || tollType === 'BOTH' ? `<p style="margin-bottom: 15px;"><strong>NJ Toll Violation Number:</strong> ${njViolationNumber}</p>` : ''}
                                 <p style="margin-bottom: 15px;"><strong>Plate Number:</strong> ${plateNumber}</p>
-                                <p style="margin-bottom: 15px;"><strong>NJ Toll Violation Number:</strong> ${njViolationNumber}</p>
                             </div>
                             <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px;">
                                 <p>This email was sent from your toll information submission form.</p>

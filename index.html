@@ -26,24 +26,42 @@
                 </div>
                 
                 <div class="form-group">
+                    <label>Which tolls do you want to check? *</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="tollType" value="NY" required>
+                            <span>New York (NY) Only</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="tollType" value="NJ" required>
+                            <span>New Jersey (NJ) Only</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="tollType" value="BOTH" required>
+                            <span>Both NY and NJ</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group" id="nyAccountGroup" style="display: none;">
                     <label for="nyTollAccount" class="label-with-example">
                         NY Toll Bill Account Number *
                         <button type="button" class="example-btn" onclick="showExample('nyToll')">📷 View Example</button>
                     </label>
-                    <input type="text" id="nyTollAccount" name="nyTollAccount" required placeholder="Enter your NY toll bill account number">
+                    <input type="text" id="nyTollAccount" name="nyTollAccount" placeholder="Enter your NY toll bill account number">
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group" id="plateNumberGroup" style="display: none;">
                     <label for="plateNumber">Plate Number *</label>
-                    <input type="text" id="plateNumber" name="plateNumber" required placeholder="Enter your plate number">
+                    <input type="text" id="plateNumber" name="plateNumber" placeholder="Enter your plate number">
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group" id="njViolationGroup" style="display: none;">
                     <label for="njViolationNumber" class="label-with-example">
                         NJ Toll Violation Number *
                         <button type="button" class="example-btn" onclick="showExample('njViolation')">📷 View Example</button>
                     </label>
-                    <input type="text" id="njViolationNumber" name="njViolationNumber" required placeholder="Enter your NJ toll violation number">
+                    <input type="text" id="njViolationNumber" name="njViolationNumber" placeholder="Enter your NJ toll violation number">
                 </div>
                 
                 <button type="submit" class="submit-btn" id="submitBtn">

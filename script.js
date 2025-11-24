@@ -5,22 +5,96 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnLoader = submitBtn.querySelector('.btn-loader');
     const messageBox = document.getElementById('messageBox');
 
+    // Get field groups
+    const nyAccountGroup = document.getElementById('nyAccountGroup');
+    const plateNumberGroup = document.getElementById('plateNumberGroup');
+    const njViolationGroup = document.getElementById('njViolationGroup');
+    const nyTollAccountInput = document.getElementById('nyTollAccount');
+    const plateNumberInput = document.getElementById('plateNumber');
+    const njViolationInput = document.getElementById('njViolationNumber');
+
+    // Handle toll type selection
+    const tollTypeRadios = document.querySelectorAll('input[name="tollType"]');
+    tollTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            updateFieldVisibility(this.value);
+        });
+    });
+
+    function updateFieldVisibility(tollType) {
+        // Reset required attributes
+        nyTollAccountInput.removeAttribute('required');
+        plateNumberInput.removeAttribute('required');
+        njViolationInput.removeAttribute('required');
+
+        // Hide all groups first
+        nyAccountGroup.style.display = 'none';
+        plateNumberGroup.style.display = 'none';
+        njViolationGroup.style.display = 'none';
+
+        // Show appropriate fields based on selection
+        if (tollType === 'NY') {
+            nyAccountGroup.style.display = 'flex';
+            plateNumberGroup.style.display = 'flex';
+            nyTollAccountInput.setAttribute('required', 'required');
+            plateNumberInput.setAttribute('required', 'required');
+        } else if (tollType === 'NJ') {
+            njViolationGroup.style.display = 'flex';
+            plateNumberGroup.style.display = 'flex';
+            njViolationInput.setAttribute('required', 'required');
+            plateNumberInput.setAttribute('required', 'required');
+        } else if (tollType === 'BOTH') {
+            nyAccountGroup.style.display = 'flex';
+            njViolationGroup.style.display = 'flex';
+            plateNumberGroup.style.display = 'flex';
+            nyTollAccountInput.setAttribute('required', 'required');
+            njViolationInput.setAttribute('required', 'required');
+            plateNumberInput.setAttribute('required', 'required');
+        }
+    }
+
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
+        // Get selected toll type
+        const selectedTollType = document.querySelector('input[name="tollType"]:checked');
+        if (!selectedTollType) {
+            showMessage('Please select which tolls you want to check.', 'error');
+            return;
+        }
+
         // Get form data
         const formData = {
             name: document.getElementById('name').value.trim(),
             email: document.getElementById('email').value.trim(),
+            tollType: selectedTollType.value,
             nyTollAccount: document.getElementById('nyTollAccount').value.trim(),
             plateNumber: document.getElementById('plateNumber').value.trim(),
             njViolationNumber: document.getElementById('njViolationNumber').value.trim()
         };
 
-        // Validate required fields
-        if (!formData.name || !formData.email || !formData.nyTollAccount || !formData.plateNumber || !formData.njViolationNumber) {
-            showMessage('Please fill in all required fields.', 'error');
+        // Validate required fields based on toll type
+        if (!formData.name || !formData.email) {
+            showMessage('Please fill in name and email address.', 'error');
             return;
+        }
+
+        // Validate fields based on toll type
+        if (formData.tollType === 'NY') {
+            if (!formData.nyTollAccount || !formData.plateNumber) {
+                showMessage('Please fill in NY Toll Account Number and Plate Number.', 'error');
+                return;
+            }
+        } else if (formData.tollType === 'NJ') {
+            if (!formData.njViolationNumber || !formData.plateNumber) {
+                showMessage('Please fill in NJ Violation Number and Plate Number.', 'error');
+                return;
+            }
+        } else if (formData.tollType === 'BOTH') {
+            if (!formData.nyTollAccount || !formData.njViolationNumber || !formData.plateNumber) {
+                showMessage('Please fill in all required fields for both NY and NJ.', 'error');
+                return;
+            }
         }
 
         // Validate email format
@@ -48,6 +122,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.ok) {
                 showMessage(data.message || 'Your information has been submitted successfully!', 'success');
                 form.reset();
+                // Hide all field groups after reset
+                nyAccountGroup.style.display = 'none';
+                plateNumberGroup.style.display = 'none';
+                njViolationGroup.style.display = 'none';
+                // Clear required attributes
+                nyTollAccountInput.removeAttribute('required');
+                plateNumberInput.removeAttribute('required');
+                njViolationInput.removeAttribute('required');
             } else {
                 showMessage(data.error || 'Failed to submit information. Please try again.', 'error');
             }
