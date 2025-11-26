@@ -199,6 +199,53 @@ Submission Time: ${new Date().toLocaleString()}
     }
 });
 
+// Test email endpoint
+app.get('/test-email', async (req, res) => {
+    try {
+        if (!sendgridApiKey) {
+            return res.status(500).json({ 
+                error: 'SENDGRID_API_KEY not configured',
+                message: 'Please set SENDGRID_API_KEY in Render environment variables'
+            });
+        }
+
+        const fromEmail = process.env.FROM_EMAIL || process.env.EMAIL_USER || 'noreply@tollwebsite.com';
+        const receivingEmail = process.env.RECEIVING_EMAIL || fromEmail;
+
+        const testMsg = {
+            to: receivingEmail,
+            from: fromEmail,
+            subject: 'Test Email from Toll Website',
+            text: 'This is a test email from your toll information website. If you receive this, email is working correctly!',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #667eea;">✅ Email Test Successful!</h2>
+                    <p>This is a test email from your toll information website.</p>
+                    <p>If you receive this email, your SendGrid configuration is working correctly!</p>
+                    <p style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px;">
+                        Test Time: ${new Date().toLocaleString()}
+                    </p>
+                </div>
+            `
+        };
+
+        await sgMail.send(testMsg);
+        
+        res.json({ 
+            success: true,
+            message: `Test email sent successfully to ${receivingEmail}`,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Test email error:', error);
+        res.status(500).json({ 
+            error: 'Failed to send test email',
+            message: error.message,
+            details: error.response?.body || 'Check server logs for more details'
+        });
+    }
+});
+
 // Serve the main page
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
