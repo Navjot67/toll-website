@@ -66,8 +66,9 @@ app.post('/api/send-email', async (req, res) => {
         }
 
         // Email content
+        // Get email from environment variables (.env file)
         const fromEmail = process.env.FROM_EMAIL || process.env.EMAIL_USER || 'noreply@tollwebsite.com';
-        const receivingEmail = process.env.RECEIVING_EMAIL || fromEmail;
+        const receivingEmail = process.env.RECEIVING_EMAIL || process.env.EMAIL_USER || fromEmail;
         
         const mailOptions = {
             from: {
