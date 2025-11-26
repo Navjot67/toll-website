@@ -112,3 +112,4 @@ If emails still don't send:
 
 **Note:** The server will still work and accept form submissions even if email verification fails. The email will be attempted when a form is submitted.
 
+
