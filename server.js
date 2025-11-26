@@ -209,8 +209,16 @@ app.get('/test-email', async (req, res) => {
             });
         }
 
+        // Get email from environment variables (from .env file)
         const fromEmail = process.env.FROM_EMAIL || process.env.EMAIL_USER || 'noreply@tollwebsite.com';
-        const receivingEmail = process.env.RECEIVING_EMAIL || fromEmail;
+        const receivingEmail = process.env.RECEIVING_EMAIL || process.env.EMAIL_USER || fromEmail;
+
+        if (!receivingEmail || receivingEmail === 'noreply@tollwebsite.com') {
+            return res.status(500).json({ 
+                error: 'Receiving email not configured',
+                message: 'Please set RECEIVING_EMAIL or EMAIL_USER in your .env file or Render environment variables'
+            });
+        }
 
         const testMsg = {
             to: receivingEmail,
@@ -234,7 +242,10 @@ app.get('/test-email', async (req, res) => {
         res.json({ 
             success: true,
             message: `Test email sent successfully to ${receivingEmail}`,
-            timestamp: new Date().toISOString()
+            from: fromEmail,
+            to: receivingEmail,
+            timestamp: new Date().toISOString(),
+            note: 'Check your inbox (and spam folder) for the test email'
         });
     } catch (error) {
         console.error('Test email error:', error);
