@@ -66,9 +66,10 @@ app.post('/api/send-email', async (req, res) => {
         }
 
         // Email content
-        // Get email from environment variables (.env file)
-        const fromEmail = process.env.FROM_EMAIL || process.env.EMAIL_USER || 'noreply@tollwebsite.com';
-        const receivingEmail = process.env.RECEIVING_EMAIL || process.env.EMAIL_USER || fromEmail;
+        // Get email from environment variables (.env file) - Use EMAIL_USER as primary
+        const emailUser = process.env.EMAIL_USER;
+        const fromEmail = process.env.FROM_EMAIL || emailUser || 'noreply@tollwebsite.com';
+        const receivingEmail = process.env.RECEIVING_EMAIL || emailUser || fromEmail;
         
         const mailOptions = {
             from: {
@@ -210,9 +211,17 @@ app.get('/test-email', async (req, res) => {
             });
         }
 
-        // Get email from environment variables (from .env file)
-        const fromEmail = process.env.FROM_EMAIL || process.env.EMAIL_USER || 'noreply@tollwebsite.com';
-        const receivingEmail = process.env.RECEIVING_EMAIL || process.env.EMAIL_USER || fromEmail;
+        // Get email from environment variables (from .env file) - Use EMAIL_USER as primary
+        const emailUser = process.env.EMAIL_USER;
+        const fromEmail = process.env.FROM_EMAIL || emailUser || 'noreply@tollwebsite.com';
+        const receivingEmail = process.env.RECEIVING_EMAIL || emailUser || fromEmail;
+
+        if (!emailUser) {
+            return res.status(500).json({ 
+                error: 'EMAIL_USER not configured',
+                message: 'Please set EMAIL_USER in your .env file or Render environment variables'
+            });
+        }
 
         if (!receivingEmail || receivingEmail === 'noreply@tollwebsite.com') {
             return res.status(500).json({ 
