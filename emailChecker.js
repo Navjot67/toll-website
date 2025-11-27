@@ -34,10 +34,10 @@ class EmailChecker {
         this.imap.once('ready', () => {
             console.log('✅ Connected to email server');
             this.checkForNewEmails();
-            // Check every 5 minutes
+            // Check every 1 minute
             this.checkInterval = setInterval(() => {
                 this.checkForNewEmails();
-            }, 5 * 60 * 1000); // 5 minutes
+            }, 60 * 1000); // 1 minute
         });
 
         this.imap.once('error', (err) => {
