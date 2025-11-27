@@ -267,6 +267,55 @@ app.get('/test-email', async (req, res) => {
     }
 });
 
+// Email checker service
+let emailChecker = null;
+
+// Initialize email checker if configured
+const emailUser = process.env.EMAIL_USER;
+const emailPassword = process.env.EMAIL_PASSWORD;
+
+if (emailUser && emailPassword) {
+    try {
+        const EmailChecker = require('./emailChecker');
+        emailChecker = new EmailChecker();
+        
+        // Start checking emails
+        console.log('📧 Starting email checker service...');
+        emailChecker.connect();
+        
+        // Graceful shutdown
+        process.on('SIGINT', () => {
+            if (emailChecker) {
+                emailChecker.stop();
+            }
+            process.exit(0);
+        });
+    } catch (error) {
+        console.log('⚠️  Email checker not available:', error.message);
+        console.log('   Install dependencies: npm install imap mailparser');
+    }
+} else {
+    console.log('⚠️  Email checker not configured - EMAIL_USER or EMAIL_PASSWORD not set');
+}
+
+// Manual email check endpoint
+app.get('/check-emails', (req, res) => {
+    if (!emailChecker) {
+        return res.status(503).json({ 
+            error: 'Email checker not available',
+            message: 'Make sure EMAIL_USER and EMAIL_PASSWORD are set in .env file'
+        });
+    }
+
+    emailChecker.manualCheck();
+    
+    res.json({ 
+        success: true,
+        message: 'Email check triggered manually',
+        timestamp: new Date().toISOString()
+    });
+});
+
 // Serve the main page
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
