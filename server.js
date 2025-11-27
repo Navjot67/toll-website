@@ -1,10 +1,9 @@
 const express = require('express');
-const nodemailer = require('nodemailer');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
-// For SendGrid REST API (more reliable than SMTP)
+// SendGrid REST API for sending emails
 const sgMail = require('@sendgrid/mail');
 
 const app = express();
