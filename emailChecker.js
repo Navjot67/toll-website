@@ -161,32 +161,152 @@ class EmailChecker {
         try {
             console.log('   🤖 Running automation for toll-related email...');
 
-            // Extract information from email
-            const emailData = {
-                from: email.from.text,
-                subject: email.subject,
-                date: email.date,
-                text: email.text,
-                html: email.html,
-                receivedAt: new Date().toISOString()
-            };
+            // Extract toll information from email
+            const tollData = this.extractTollData(email);
+            
+            if (!tollData) {
+                console.log('   ⚠️  Could not extract toll data from email');
+                return;
+            }
 
-            // TODO: Add your automation logic here
-            // Examples:
-            // - Extract toll information from email
-            // - Save to database
-            // - Send notifications
-            // - Process toll data
-            // - Update records
+            console.log('   📋 Extracted toll data:');
+            console.log('      Name:', tollData.name);
+            console.log('      Email:', tollData.userEmail);
+            console.log('      Toll Type:', tollData.tollType);
+            console.log('      NY Account:', tollData.nyAccount || 'N/A');
+            console.log('      NJ Violation:', tollData.njViolation || 'N/A');
+            console.log('      Plate Number:', tollData.plateNumber);
 
-            console.log('   ✅ Automation completed');
-            console.log('   📝 Email data:', JSON.stringify(emailData, null, 2));
+            // Send email to user with their data
+            await this.sendDataToUser(tollData);
 
-            // Mark email as read (optional)
-            // this.markAsRead(email.uid);
+            console.log('   ✅ Automation completed - Data sent to user');
 
         } catch (error) {
             console.error('❌ Automation error:', error.message);
+            console.error('   Stack:', error.stack);
+        }
+    }
+
+    // Extract toll data from email content
+    extractTollData(email) {
+        try {
+            const text = email.text || '';
+            const html = email.html || '';
+            
+            // Parse data from email text/HTML
+            const nameMatch = text.match(/Name:\s*([^\n]+)/i) || html.match(/<strong>Name:<\/strong>\s*([^<\n]+)/i);
+            const emailMatch = text.match(/Email Address.*?:\s*([^\s\n]+@[^\s\n]+)/i) || html.match(/Email Address.*?<\/strong>.*?<a[^>]*>([^<]+)<\/a>/i);
+            const tollTypeMatch = text.match(/Toll Type Selected:\s*([^\n]+)/i) || html.match(/Toll Type Selected:<\/strong>\s*([^<\n]+)/i);
+            const nyAccountMatch = text.match(/NY Toll Bill Account Number:\s*([^\n]+)/i) || html.match(/NY Toll Bill Account Number:<\/strong>\s*([^<\n]+)/i);
+            const njViolationMatch = text.match(/NJ Toll Violation Number:\s*([^\n]+)/i) || html.match(/NJ Toll Violation Number:<\/strong>\s*([^<\n]+)/i);
+            const plateMatch = text.match(/Plate Number:\s*([^\n]+)/i) || html.match(/Plate Number:<\/strong>\s*([^<\n]+)/i);
+
+            const name = nameMatch ? nameMatch[1].trim() : null;
+            const userEmail = emailMatch ? emailMatch[1].trim() : null;
+            const tollType = tollTypeMatch ? tollTypeMatch[1].trim() : null;
+            const nyAccount = nyAccountMatch ? nyAccountMatch[1].trim() : null;
+            const njViolation = njViolationMatch ? njViolationMatch[1].trim() : null;
+            const plateNumber = plateMatch ? plateMatch[1].trim() : null;
+
+            if (!name || !userEmail) {
+                console.log('   ⚠️  Missing required fields (name or email)');
+                return null;
+            }
+
+            return {
+                name,
+                userEmail,
+                tollType,
+                nyAccount,
+                njViolation,
+                plateNumber,
+                extractedAt: new Date().toISOString()
+            };
+
+        } catch (error) {
+            console.error('   ❌ Error extracting toll data:', error.message);
+            return null;
+        }
+    }
+
+    // Send extracted data back to user
+    async sendDataToUser(tollData) {
+        try {
+            const sgMail = require('@sendgrid/mail');
+            require('dotenv').config();
+
+            const sendgridApiKey = process.env.SENDGRID_API_KEY;
+            if (!sendgridApiKey) {
+                console.log('   ⚠️  SENDGRID_API_KEY not configured - cannot send email to user');
+                return;
+            }
+
+            sgMail.setApiKey(sendgridApiKey);
+
+            const fromEmail = process.env.FROM_EMAIL || process.env.EMAIL_USER || 'noreply@tollwebsite.com';
+            
+            // Build email content based on toll type
+            let emailContent = '';
+            let emailHtml = '';
+
+            if (tollData.tollType?.includes('New York') || tollData.nyAccount) {
+                emailContent += `NY Toll Bill Account Number: ${tollData.nyAccount || 'Not provided'}\n`;
+                emailHtml += `<p><strong>NY Toll Bill Account Number:</strong> ${tollData.nyAccount || 'Not provided'}</p>`;
+            }
+
+            if (tollData.tollType?.includes('New Jersey') || tollData.njViolation) {
+                emailContent += `NJ Toll Violation Number: ${tollData.njViolation || 'Not provided'}\n`;
+                emailHtml += `<p><strong>NJ Toll Violation Number:</strong> ${tollData.njViolation || 'Not provided'}</p>`;
+            }
+
+            const msg = {
+                to: tollData.userEmail,
+                from: fromEmail,
+                subject: `Your Toll Information - ${tollData.name}`,
+                text: `
+Hello ${tollData.name},
+
+Thank you for submitting your toll information. Here are the details we have received:
+
+${emailContent}Plate Number: ${tollData.plateNumber || 'Not provided'}
+Toll Type: ${tollData.tollType || 'Not specified'}
+
+We have successfully received and processed your toll information.
+
+Best regards,
+Toll Information System
+                `,
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <h2 style="color: #667eea;">Your Toll Information</h2>
+                        <p>Hello ${tollData.name},</p>
+                        <p>Thank you for submitting your toll information. Here are the details we have received:</p>
+                        
+                        <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                            ${emailHtml}
+                            <p><strong>Plate Number:</strong> ${tollData.plateNumber || 'Not provided'}</p>
+                            <p><strong>Toll Type:</strong> ${tollData.tollType || 'Not specified'}</p>
+                        </div>
+                        
+                        <p>We have successfully received and processed your toll information.</p>
+                        
+                        <p style="margin-top: 30px; color: #666; font-size: 12px;">
+                            Best regards,<br>
+                            Toll Information System
+                        </p>
+                    </div>
+                `
+            };
+
+            await sgMail.send(msg);
+            console.log(`   ✅ Confirmation email sent to: ${tollData.userEmail}`);
+
+        } catch (error) {
+            console.error('   ❌ Error sending email to user:', error.message);
+            if (error.response) {
+                console.error('   SendGrid error:', JSON.stringify(error.response.body, null, 2));
+            }
         }
     }
 
