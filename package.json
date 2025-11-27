@@ -8,10 +8,10 @@
     "dev": "nodemon server.js"
   },
   "keywords": [
-    "contact",
+    "toll",
     "form",
     "email",
-    "nodemailer"
+    "sendgrid"
   ],
   "author": "",
   "license": "MIT",
